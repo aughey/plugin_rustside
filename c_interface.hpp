@@ -10,6 +10,7 @@ namespace plugin
 
 extern "C"
 {
+    void interface_shutdown(plugin::IInterface *);
     const char *interface_get_name(plugin::IInterface *);
     uint64_t interface_get_frame(plugin::IInterface *);
     double interface_get_position_x(plugin::IInterface *);

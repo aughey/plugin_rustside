@@ -51,7 +51,9 @@ impl Interface {
     pub fn name(&self) -> &str {
         unsafe {
             let name = bindings::interface_get_name(self.wrapper);
-            std::ffi::CStr::from_ptr(name).to_str().expect("a valid string from the interface_get_name call")
+            std::ffi::CStr::from_ptr(name)
+                .to_str()
+                .expect("a valid string from the interface_get_name call")
         }
     }
     pub fn frame(&self) -> u64 {

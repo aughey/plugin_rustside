@@ -1,5 +1,5 @@
 //! This is the adapter between the C interface and the Rust plugin.
-//! 
+//!
 //! C Function we are expected to implement
 //! - void rust_initialize();
 //! - void plugin_constructor(plugin::IPlugin *);
@@ -8,11 +8,7 @@
 //! - void plugin_on_frame(plugin::IPlugin *, plugin::IInterface *);
 //! - void plugin_on_exit(plugin::IPlugin *);
 
-use crate::{
-    bindings,
-    plugin::Plugin,
-    Context, rust_plugin::RustPlugin,
-};
+use crate::{bindings, plugin::Plugin, rust_plugin::RustPlugin, Context};
 
 use lazy_static::lazy_static;
 use tracing::{error, info};

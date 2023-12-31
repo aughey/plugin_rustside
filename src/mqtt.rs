@@ -10,6 +10,8 @@ pub struct MQTT {
     receiver: tokio::sync::mpsc::UnboundedReceiver<(String, String)>,
 }
 impl MQTT {
+    /// Asynchornously create and connect to the mqtt server.
+    /// This will sort of block until a connection is made.
     pub async fn new(
         id: &str,
         host: &str,
@@ -57,6 +59,7 @@ impl MQTT {
         Ok((Self { client, receiver }, event_loop))
     }
 
+    /// Subscribe to a mqtt topic
     pub async fn subscribe(&mut self, topic: &str) -> Result<()> {
         self.client
             .subscribe(topic, rumqttc::QoS::AtLeastOnce)
@@ -64,6 +67,7 @@ impl MQTT {
         Ok(())
     }
 
+    /// Non-block try publishing to a mqtt topic
     pub fn try_publish<P>(&mut self, topic: &str, payload: P) -> Result<()>
     where
         P: Into<Vec<u8>>,
@@ -73,6 +77,8 @@ impl MQTT {
         Ok(())
     }
 
+    /// Try to receive a message from the mqtt channel.
+    /// If there is no message, return None.
     pub fn try_recv(&mut self) -> Option<(String, String)> {
         self.receiver.try_recv().ok()
     }

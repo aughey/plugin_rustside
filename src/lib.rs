@@ -6,7 +6,9 @@ mod adapter;
 pub mod bindings;
 mod mqtt;
 mod plugin;
+mod rust_plugin;
 
+/// A context object that gives plugins access to runtime features like an async context.
 pub struct Context {
     tokio_runtime: tokio::runtime::Runtime,
 }
@@ -16,12 +18,17 @@ impl Context {
 
         Context { tokio_runtime }
     }
+    /// Spawn a task in the async runtime that is held by the context.
     pub fn spawn_task<F>(&self, task: F)
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
         self.tokio_runtime.spawn(task);
     }
+
+    /// Run an async task in the async runtime that is held by the context, but block
+    /// until the task is complete.
+    /// Returns the output of the task.
     pub fn block_on_async<F, T>(&self, task: F) -> T
     where
         F: std::future::Future<Output = T> + Send + 'static,
@@ -31,6 +38,7 @@ impl Context {
     }
 }
 
+/// An interface wrapper to make calls back to the host through the C interface.
 pub struct Interface {
     wrapper: *mut bindings::plugin_IInterface,
 }
@@ -43,7 +51,7 @@ impl Interface {
     pub fn name(&self) -> &str {
         unsafe {
             let name = bindings::interface_get_name(self.wrapper);
-            std::ffi::CStr::from_ptr(name).to_str().unwrap()
+            std::ffi::CStr::from_ptr(name).to_str().expect("a valid string from the interface_get_name call")
         }
     }
     pub fn frame(&self) -> u64 {
@@ -64,17 +72,21 @@ impl Interface {
     }
 }
 
+/// A helper struct to count frames per second.
+/// Every second tick() will return the current frames per second.
 pub struct FramesPerSecond {
     count: u64,
     last_print: std::time::Instant,
 }
 impl FramesPerSecond {
+    /// Construct the value.
     pub fn new() -> Self {
         FramesPerSecond {
             count: 0,
             last_print: std::time::Instant::now(),
         }
     }
+    /// Tick the counter and return the current frames per second if a second has passed.
     pub fn tick(&mut self) -> Option<f64> {
         self.count += 1;
         let now = std::time::Instant::now();

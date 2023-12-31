@@ -1,16 +1,24 @@
+use std::fmt::Debug;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use tracing::{debug, error, info, instrument};
 
 use crate::{mqtt::MQTT, Context, FramesPerSecond, Interface};
 
 pub trait Plugin {
     fn on_frame(&mut self, context: &Context, interface: &Interface) -> Result<()>;
 }
+
 pub struct RustPlugin {
     mqtt: MQTT,
     speedtest: bool,
     fps: FramesPerSecond,
+}
+impl Debug for RustPlugin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RustPlugin")
+    }
 }
 impl RustPlugin {
     pub fn new(context: &Context) -> Result<Self> {
@@ -50,7 +58,7 @@ impl Plugin for RustPlugin {
 
         // Handle incoming messages
         while let Some((topic, payload)) = self.mqtt.try_recv() {
-            info!("  Received message on {}: {}", topic, payload);
+            debug!("  Received message on {topic}: {payload}");
             let command = serde_json::from_str::<Commands>(&payload)?;
             match command {
                 Commands::Shutdown(shutdown) => shutdown.handle(context, interface),
@@ -62,10 +70,12 @@ impl Plugin for RustPlugin {
             return Ok(());
         }
 
-        info!("RustPlugin::on_frame");
-        info!("  name: {}", interface.name());
-        info!("  frame: {}", interface.frame());
-        info!("  position: {:?}", interface.position());
+        debug!(
+            "RustPlugin::on_frame {name} {frame} {position}",
+            name = interface.name(),
+            frame = interface.frame(),
+            position = format!("{:?}", interface.position())
+        );
 
         // For funzies, publish a message to mqtt
         let data = FrameData {
@@ -77,9 +87,9 @@ impl Plugin for RustPlugin {
 
         // Spawn a task just for the fun of it
         context.spawn_task(async move {
-            info!("  Spawning a task and sleeping");
+            debug!("  Spawning a task and sleeping");
             tokio::time::sleep(std::time::Duration::from_micros(1000)).await;
-            info!("  Task completed");
+            debug!("  Task completed");
         });
 
         // block the task with sleep

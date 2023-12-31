@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use tokio::runtime::Builder;
 
 mod adapter;
@@ -31,6 +33,11 @@ impl Context {
 
 pub struct Interface {
     wrapper: *mut bindings::plugin_IInterface,
+}
+impl Debug for Interface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Interface")
+    }
 }
 impl Interface {
     pub fn name(&self) -> &str {

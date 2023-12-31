@@ -5,22 +5,21 @@
 // void plugin_on_frame(plugin::IPlugin *, plugin::IInterface *);
 // void plugin_on_exit(plugin::IPlugin *);
 
-use std::collections::HashMap;
-
 use crate::{
     bindings,
-    plugin::{Plugin, RustPlugin}, Context,
+    plugin::{Plugin, RustPlugin},
+    Context,
 };
 
 use lazy_static::lazy_static;
+use tracing::error;
 
 lazy_static! {
-    static ref PLUGIN_SINGLETON: std::sync::Mutex<HashMap<usize, Box<dyn Plugin + Send + Sync>>> =
-        std::sync::Mutex::new(HashMap::new());
+    static ref PLUGIN_SINGLETON: std::sync::Mutex<Vec<(usize, Box<dyn Plugin + Send + Sync>)>> =
+        std::sync::Mutex::new(Vec::new());
 }
 lazy_static! {
-    static ref CONTEXT_SINGLETON: std::sync::Mutex<Context> = 
-        std::sync::Mutex::new(Context::new());
+    static ref CONTEXT_SINGLETON: std::sync::Mutex<Context> = std::sync::Mutex::new(Context::new());
 }
 
 fn pointer_to_integer<T>(ptr: *mut T) -> usize {
@@ -42,16 +41,17 @@ pub extern "C" fn plugin_constructor(plugin_ptr: *mut bindings::plugin_IPlugin) 
     PLUGIN_SINGLETON
         .lock()
         .unwrap()
-        .insert(pointer_to_integer(plugin_ptr), plugin);
+        .push((pointer_to_integer(plugin_ptr), plugin));
 }
 
 #[no_mangle]
 pub extern "C" fn plugin_destructor(plugin_ptr: *mut bindings::plugin_IPlugin) {
     // Remove the instance from the singleton
-    PLUGIN_SINGLETON
-        .lock()
-        .unwrap()
-        .remove(&pointer_to_integer(plugin_ptr));
+    let mut plugins = PLUGIN_SINGLETON.lock().unwrap();
+    let key = pointer_to_integer(plugin_ptr);
+    if let Some(index) = plugins.iter().position(|(k, _)| *k == key) {
+        plugins.remove(index);
+    }
 }
 
 #[no_mangle]
@@ -66,12 +66,15 @@ pub extern "C" fn plugin_on_frame(
 ) {
     let context = CONTEXT_SINGLETON.lock().unwrap();
 
-    PLUGIN_SINGLETON
-        .lock()
-        .unwrap()
-        .get_mut(&pointer_to_integer(plugin_ptr))
-        .unwrap()
-        .on_frame(&context, &crate::Interface { wrapper: interface });
+    let mut plugins = PLUGIN_SINGLETON.lock().unwrap();
+
+    let key = pointer_to_integer(plugin_ptr);
+
+    if let Some((_, plugin)) = plugins.iter_mut().find(|(k, _)| *k == key) {
+        if let Err(e) = plugin.on_frame(&context, &crate::Interface { wrapper: interface }) {
+            error!("Error in plugin_on_frame: {}", e);
+        }
+    }
 }
 
 #[no_mangle]

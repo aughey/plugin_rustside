@@ -1,7 +1,8 @@
 use tokio::runtime::Builder;
 
-pub mod bindings;
 mod adapter;
+pub mod bindings;
+mod mqtt;
 mod plugin;
 
 pub struct Context {
@@ -9,14 +10,9 @@ pub struct Context {
 }
 impl Context {
     pub fn new() -> Self {
-        let tokio_runtime = Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        let tokio_runtime = Builder::new_multi_thread().enable_all().build().unwrap();
 
-        Context {
-            tokio_runtime,
-        }
+        Context { tokio_runtime }
     }
     pub fn spawn_task<F>(&self, task: F)
     where
@@ -44,9 +40,7 @@ impl Interface {
         }
     }
     pub fn frame(&self) -> u64 {
-        unsafe {
-            bindings::interface_get_frame(self.wrapper)
-        }
+        unsafe { bindings::interface_get_frame(self.wrapper) }
     }
     pub fn position(&self) -> (f64, f64, f64) {
         unsafe {
@@ -59,6 +53,32 @@ impl Interface {
     pub fn shutdown(&self) {
         unsafe {
             bindings::interface_shutdown(self.wrapper);
+        }
+    }
+}
+
+pub struct FramesPerSecond {
+    count: u64,
+    last_print: std::time::Instant,
+}
+impl FramesPerSecond {
+    pub fn new() -> Self {
+        FramesPerSecond {
+            count: 0,
+            last_print: std::time::Instant::now(),
+        }
+    }
+    pub fn tick(&mut self) -> Option<f64> {
+        self.count += 1;
+        let now = std::time::Instant::now();
+        let since = now.duration_since(self.last_print);
+        if since.as_secs() >= 1 {
+            let ret = Some(self.count as f64 / since.as_secs_f64());
+            self.count = 0;
+            self.last_print = now;
+            ret
+        } else {
+            None
         }
     }
 }

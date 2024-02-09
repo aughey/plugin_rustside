@@ -20,11 +20,21 @@ impl RustPlugin {
     /// Create a new instance of the plugin.
     /// 
     /// The plugin might block while connecting to the mqtt server.
-    pub fn new(_context: &Context) -> Result<Self> {
+    pub fn new(context: &Context) -> Result<Self> {
         info!("Constructing Rust Plugin");
  
+        // spawn a task to run asynchronously and do something
+        context.spawn_task(async {
+            // do something
+            // sleep 1 second
+            loop {
+            tokio::time::sleep(tokio::time::Duration::from_micros(250000)).await;
+                let current_time_of_day = chrono::Local::now().time();
+                info!("in an asynchronous loop {current_time_of_day}");
+            }
+        });
+ 
         Ok(RustPlugin {
-         
             fps: FramesPerSecond::new(),
         })
     }
@@ -32,7 +42,7 @@ impl RustPlugin {
 
 impl Plugin for RustPlugin {
     fn on_frame(&mut self, _context: &Context, _interface: &Interface) -> Result<()> {
-        info!("RustPlugin::on_frame");
+        //info!("RustPlugin::on_frame");
         // Count/print the frames per second
         if let Some(fps) = self.fps.tick() {
             // format fps to have , separator for when the numbers get big

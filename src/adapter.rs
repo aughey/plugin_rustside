@@ -81,6 +81,8 @@ pub extern "C" fn plugin_on_run(
     let context = CONTEXT_SINGLETON.lock().unwrap();
     let mut plugins = PLUGIN_SINGLETON.lock().unwrap();
 
+    // info!("plugin_on_run (called from info)");
+
     // This is how we identify a plugin
     let key = pointer_to_integer(plugin_ptr);
 

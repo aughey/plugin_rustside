@@ -4,7 +4,9 @@ use tokio::runtime::Builder;
 
 mod adapter;
 pub mod bindings;
-mod mqtt;
+// Enable if feature mqtt is enabled
+#[cfg(feature = "mqtt")]
+pub mod mqtt;
 mod plugin;
 mod rust_plugin;
 
@@ -40,39 +42,38 @@ impl Context {
 
 /// An interface wrapper to make calls back to the host through the C interface.
 pub struct Interface {
-    wrapper: *mut bindings::plugin_IInterface,
 }
 impl Debug for Interface {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Interface")
     }
 }
-impl Interface {
-    pub fn name(&self) -> &str {
-        unsafe {
-            let name = bindings::interface_get_name(self.wrapper);
-            std::ffi::CStr::from_ptr(name)
-                .to_str()
-                .expect("a valid string from the interface_get_name call")
-        }
-    }
-    pub fn frame(&self) -> u64 {
-        unsafe { bindings::interface_get_frame(self.wrapper) }
-    }
-    pub fn position(&self) -> (f64, f64, f64) {
-        unsafe {
-            let x = bindings::interface_get_position_x(self.wrapper);
-            let y = bindings::interface_get_position_y(self.wrapper);
-            let z = bindings::interface_get_position_z(self.wrapper);
-            (x, y, z)
-        }
-    }
-    pub fn shutdown(&self) {
-        unsafe {
-            bindings::interface_shutdown(self.wrapper);
-        }
-    }
-}
+// impl Interface {
+//     pub fn name(&self) -> &str {
+//         unsafe {
+//             let name = bindings::interface_get_name(self.wrapper);
+//             std::ffi::CStr::from_ptr(name)
+//                 .to_str()
+//                 .expect("a valid string from the interface_get_name call")
+//         }
+//     }
+//     pub fn frame(&self) -> u64 {
+//         unsafe { bindings::interface_get_frame(self.wrapper) }
+//     }
+//     pub fn position(&self) -> (f64, f64, f64) {
+//         unsafe {
+//             let x = bindings::interface_get_position_x(self.wrapper);
+//             let y = bindings::interface_get_position_y(self.wrapper);
+//             let z = bindings::interface_get_position_z(self.wrapper);
+//             (x, y, z)
+//         }
+//     }
+//     pub fn shutdown(&self) {
+//         unsafe {
+//             bindings::interface_shutdown(self.wrapper);
+//         }
+//     }
+// }
 
 /// A helper struct to count frames per second.
 /// Every second tick() will return the current frames per second.

@@ -34,16 +34,13 @@ fn pointer_to_integer<T>(ptr: *mut T) -> usize {
     ptr as usize
 }
 
-#[no_mangle]
-pub extern "C" fn rust_initialize() {
-    tracing_subscriber::fmt::init();
-    info!("Initialized rust");
-}
-
 /// Called when a plugin is created on the host side.  
 /// We simply create a Rust represenative plugin to accept and handle the calls.
 #[no_mangle]
-pub extern "C" fn plugin_constructor(plugin_ptr: *mut bindings::plugin_IPlugin) {
+pub extern "C" fn plugin_constructor(plugin_ptr: *mut bindings::plugin_CBoeingPackageModel) {
+    tracing_subscriber::fmt::init();
+    info!("Initialized rust");
+
     let context = CONTEXT_SINGLETON.lock().unwrap();
     // Create and box an instance of RustPlugin to be the recipient of the plugin calls through the C interface
     let plugin = Box::new(RustPlugin::new(&context).unwrap());
@@ -57,7 +54,7 @@ pub extern "C" fn plugin_constructor(plugin_ptr: *mut bindings::plugin_IPlugin) 
 /// Called when a plugin is destroyed on the host side.
 /// We simply remove the Rust represenative plugin from the singleton which will drop the instance.
 #[no_mangle]
-pub extern "C" fn plugin_destructor(plugin_ptr: *mut bindings::plugin_IPlugin) {
+pub extern "C" fn plugin_destructor(plugin_ptr: *mut bindings::plugin_CBoeingPackageModel) {
     // Remove the instance from the singleton
     let mut plugins = PLUGIN_SINGLETON.lock().unwrap();
     let key = pointer_to_integer(plugin_ptr);
@@ -69,7 +66,7 @@ pub extern "C" fn plugin_destructor(plugin_ptr: *mut bindings::plugin_IPlugin) {
 /// Called when a plugin is initialized on the host side.
 /// This is an eroneous call and we do nothing.
 #[no_mangle]
-pub extern "C" fn plugin_on_initialize(_plugin_ptr: *mut bindings::plugin_IPlugin) {
+pub extern "C" fn plugin_on_initialize(_plugin_ptr: *mut bindings::plugin_CBoeingPackageModel) {
     // do nothing
 }
 
@@ -77,9 +74,8 @@ pub extern "C" fn plugin_on_initialize(_plugin_ptr: *mut bindings::plugin_IPlugi
 /// Pass the call to the Rust represenative plugin and wrap the instance
 /// into a callable rust object.
 #[no_mangle]
-pub extern "C" fn plugin_on_frame(
-    plugin_ptr: *mut bindings::plugin_IPlugin,
-    interface: *mut bindings::plugin_IInterface,
+pub extern "C" fn plugin_on_run(
+    plugin_ptr: *mut bindings::plugin_CBoeingPackageModel
 ) {
     // Grab our static context and plugin instances
     let context = CONTEXT_SINGLETON.lock().unwrap();
@@ -91,7 +87,7 @@ pub extern "C" fn plugin_on_frame(
     // assuming we find it, call the on_frame method
     if let Some((_, plugin)) = plugins.iter_mut().find(|(k, _)| *k == key) {
         // This is our error boundary, so log any errors and continue
-        if let Err(e) = plugin.on_frame(&context, &crate::Interface { wrapper: interface }) {
+        if let Err(e) = plugin.on_frame(&context, &crate::Interface { }) {
             error!("Error in plugin_on_frame: {}", e);
         }
     }
@@ -100,6 +96,6 @@ pub extern "C" fn plugin_on_frame(
 /// Called when a plugin is exiting on the host side.
 /// This is an eroneous call and we do nothing.
 #[no_mangle]
-pub extern "C" fn plugin_on_exit(_plugin_ptr: *mut bindings::plugin_IPlugin) {
+pub extern "C" fn plugin_on_reset(_plugin_ptr: *mut bindings::plugin_CBoeingPackageModel) {
     // do nothing
 }

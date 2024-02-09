@@ -16,24 +16,44 @@ impl Debug for RustPlugin {
     }
 }
 
+async fn get_current_time() -> String {
+    // Use chrono to get the current time
+    let now = chrono::Local::now();
+    format!(
+        "Hello from Axum in rust, Current time: {}",
+        now.to_rfc2822()
+    )
+}
+
 impl RustPlugin {
     /// Create a new instance of the plugin.
-    /// 
+    ///
     /// The plugin might block while connecting to the mqtt server.
     pub fn new(context: &Context) -> Result<Self> {
         info!("Constructing Rust Plugin");
- 
+
         // spawn a task to run asynchronously and do something
         context.spawn_task(async {
             // do something
             // sleep 1 second
             loop {
-            tokio::time::sleep(tokio::time::Duration::from_micros(250000)).await;
+                tokio::time::sleep(tokio::time::Duration::from_micros(250000)).await;
                 let current_time_of_day = chrono::Local::now().time();
                 info!("in an asynchronous loop {current_time_of_day}");
             }
         });
- 
+
+        // Create/spawn an axum server
+        context.spawn_task(async {
+            use axum::{routing::get, Router};
+            // Build our application with a single route
+            let app = Router::new().route("/", get(get_current_time));
+
+            // run our app with hyper, listening globally on port 3000
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+            axum::serve(listener, app).await.unwrap();
+        });
+
         Ok(RustPlugin {
             fps: FramesPerSecond::new(),
         })
@@ -51,8 +71,6 @@ impl Plugin for RustPlugin {
             info!("RustPlugin::on_frame fps: {}", fps);
         }
 
-      
         Ok(())
     }
 }
-

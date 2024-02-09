@@ -93,6 +93,8 @@ pub extern "C" fn plugin_on_run(
             error!("Error in plugin_on_frame: {}", e);
         }
     }
+    // poll the context to allow async tasks to run
+    context.poll();
 }
 
 /// Called when a plugin is exiting on the host side.

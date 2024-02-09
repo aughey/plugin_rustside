@@ -16,10 +16,15 @@ pub struct Context {
 }
 impl Context {
     pub fn new() -> Self {
-        let tokio_runtime = Builder::new_multi_thread().enable_all().build().unwrap();
+        //let tokio_runtime = Builder::new_multi_thread().enable_all().build().unwrap();
+        let tokio_runtime = Builder::new_current_thread().enable_all().build().unwrap();
 
         Context { tokio_runtime }
     }
+    pub fn poll(&self) {
+        self.tokio_runtime.block_on(async {tokio::time::sleep(std::time::Duration::ZERO).await});
+    }
+
     /// Spawn a task in the async runtime that is held by the context.
     pub fn spawn_task<F>(&self, task: F)
     where

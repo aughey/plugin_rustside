@@ -12,25 +12,37 @@ mod rust_plugin;
 
 /// A context object that gives plugins access to runtime features like an async context.
 pub struct Context {
-    tokio_runtime: tokio::runtime::Runtime,
+    sync_tokio_runtime: tokio::runtime::Runtime,
+    threaded_tokio_runtime: tokio::runtime::Runtime,
 }
 impl Context {
     pub fn new() -> Self {
-        //let tokio_runtime = Builder::new_multi_thread().enable_all().build().unwrap();
-        let tokio_runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let threaded_tokio_runtime = Builder::new_multi_thread().enable_all().build().unwrap();
+        let sync_tokio_runtime = Builder::new_current_thread().enable_all().build().unwrap();
 
-        Context { tokio_runtime }
+        Context {
+            sync_tokio_runtime,
+            threaded_tokio_runtime,
+        }
     }
     pub fn poll(&self) {
-        self.tokio_runtime.block_on(async {tokio::time::sleep(std::time::Duration::ZERO).await});
+        self.sync_tokio_runtime
+            .block_on(async { tokio::time::sleep(std::time::Duration::ZERO).await });
     }
 
-    /// Spawn a task in the async runtime that is held by the context.
-    pub fn spawn_task<F>(&self, task: F)
+    /// Spawn a task in the async runtime that is held by the context, but do work synchronous with the poll operation.
+    pub fn spawn_task_synchronous<F>(&self, task: F)
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        self.tokio_runtime.spawn(task);
+        self.sync_tokio_runtime.spawn(task);
+    }
+
+    pub fn spawn_task_threaded<F>(&self, task: F)
+    where
+        F: std::future::Future<Output = ()> + Send + 'static,
+    {
+        self.threaded_tokio_runtime.spawn(task);
     }
 
     /// Run an async task in the async runtime that is held by the context, but block
@@ -41,13 +53,12 @@ impl Context {
         F: std::future::Future<Output = T> + Send + 'static,
         T: Send + 'static,
     {
-        self.tokio_runtime.block_on(task)
+        self.sync_tokio_runtime.block_on(task)
     }
 }
 
 /// An interface wrapper to make calls back to the host through the C interface.
-pub struct Interface {
-}
+pub struct Interface {}
 impl Debug for Interface {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Interface")

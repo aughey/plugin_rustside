@@ -19,8 +19,10 @@ impl Debug for RustPlugin {
 async fn get_current_time() -> String {
     // Use chrono to get the current time
     let now = chrono::Local::now();
+    let current_thread = std::thread::current();
+    let current_thread_id = current_thread.id();
     format!(
-        "Hello from Axum in rust, Current time: {}",
+        "Hello from Axum in rust thread {current_thread_id:?}, Current time: {}",
         now.to_rfc2822()
     )
 }
@@ -32,8 +34,8 @@ impl RustPlugin {
     pub fn new(context: &Context) -> Result<Self> {
         info!("Constructing Rust Plugin");
 
-        // spawn a task to run asynchronously and do something
-        context.spawn_task(async {
+        // spawn an async task to run synchronous with our frame and do something
+        context.spawn_task_synchronous(async {
             // do something
             // sleep 1 second
             loop {
@@ -44,7 +46,7 @@ impl RustPlugin {
         });
 
         // Create/spawn an axum server
-        context.spawn_task(async {
+        context.spawn_task_threaded(async {
             use axum::{routing::get, Router};
             // Build our application with a single route
             let app = Router::new().route("/", get(get_current_time));
